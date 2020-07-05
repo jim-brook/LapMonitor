@@ -1,0 +1,172 @@
+/*
+ * MonitorWindow.cpp
+ *
+ *  Created on: Jun 27, 2020
+ *      Author: unknown
+ */
+#include <ncurses.h>
+#include "MonitorWindow.h"
+using namespace std;
+
+
+MonitorWindow::MonitorWindow(GlobalObjects* g)
+{
+	gObs = g;
+}
+
+MonitorWindow::~MonitorWindow()
+{
+	// TODO Auto-generated destructor stub
+}
+
+
+void MonitorWindow::Start(void)
+{
+	std::list<GlobalObjects::LapDescriptor>::iterator it;
+	std::list<GlobalObjects::LapDescriptor>::iterator iter;
+	std::list<GlobalObjects::LapDescriptor> laps;
+	std::unordered_map<int, GlobalObjects::LapDescriptor> foundLaps;
+	std::list<GlobalObjects::LapDescriptor> allNewFoundLaps;
+	std::list<GlobalObjects::LapDescriptor>dedupedLaps;
+	std::list<GlobalObjects::LapDescriptor> lapsForCurses;
+	bool descFound = false;
+	initscr();
+	scrollok(stdscr,TRUE);
+	while(gObs->isClosing == false)
+	{
+		if(gObs->listToMonitorRdy == false)
+		{
+			//std::cout << "MW SLEEP" << std::endl;
+			gObs->ListToMonitorWaiter();
+		}
+		//std::cout << "MW AWAKE" << std::endl;
+		gObs->listToMonitorRdy = false;
+		if(gObs->isClosing == true)
+		{
+			endwin();
+			return;
+		}
+		laps.clear();
+		allNewFoundLaps.clear();
+		//std::cout << "MW LOCK" << std::endl;
+		gObs->listToMonitorWaitMutex.lock();
+		std::copy(gObs->monitorLaps.begin(), gObs->monitorLaps.end(), std::back_inserter(laps));
+		gObs->monitorLaps.clear();
+		gObs->listToMonitorWaitMutex.unlock();
+		//std::cout << "MW UNLOCK" << std::endl;
+
+		for (it = laps.begin(); it != laps.end(); ++it)
+		{
+			descFound = false;
+			for (iter = lapsForCurses.begin(); iter != lapsForCurses.end(); ++iter)
+			{
+				if(it->numLap == iter->numLap)
+				{
+					iter->count++;
+					if(iter->numMinSignal > it->numSignal)
+					{
+						iter->numMinSignal = it->numSignal;
+						iter->humMinSignal = it->humSignal;
+					}
+					else if(iter->numMaxSignal < it->numSignal)
+					{
+						iter->numMaxSignal = it->numSignal;
+						iter->humMaxSignal = it->humSignal;
+					}
+					//todo compute avg, signal strength
+					if(iter->numTs < it->numTs)
+					{
+						iter->lastSeen = it->humTs;
+					}
+					iter->humTs = it->humTs;
+					iter->numTs = it->numTs;
+					iter->numSignal = it->numSignal;
+					iter->humSignal = it->humSignal;
+					iter->humChannel = it->humChannel;
+					iter->numChannel = it->numChannel;
+					descFound = true;
+					break;
+				}
+			}
+			if(descFound == false)//new laps
+			{
+				GlobalObjects::LapDescriptor lap;
+				lap.humTs = it->humTs;
+				lap.numTs = it->numTs;
+				lap.numSignal = it->numSignal;
+				lap.humSignal = it->humSignal;
+				lap.numMinSignal = it->numSignal;
+				lap.numMaxSignal = it->numSignal;
+				lap.humMinSignal = it->humSignal;
+				lap.humMaxSignal = it->humSignal;
+				lap.humChannel = it->humChannel;
+				lap.numChannel = it->numChannel;
+				lap.humLap = it->humLap;
+				lap.numLap = it->numLap;
+				lap.firstSeen = it->humTs;
+				lap.lastSeen = it->humTs;
+				lap.count = 1;
+
+				if(foundLaps.count(lap.numLap))
+				{
+					allNewFoundLaps.push_back(lap);
+				}
+				foundLaps[lap.numLap] = lap;
+
+				//Since we are using aggregates for a single LAP, there can only be 1 entry for a LAP in the lapsForCurses list
+				//We can only add once and then do updates. All subsequent instances of a lap found in the first buffer need to be discarded except the last one
+			}
+		}
+		if(foundLaps.size() > 0)
+		{
+			for (const auto & [ key, value ] : foundLaps)
+			{
+				dedupedLaps.push_back(value);
+			}
+			lapsForCurses.splice(lapsForCurses.end(), dedupedLaps);
+			for (it = allNewFoundLaps.begin(); it != allNewFoundLaps.end(); ++it)
+			{
+				for (iter = lapsForCurses.begin(); iter != lapsForCurses.end(); ++iter)
+				{
+					if(it->numLap == iter->numLap)
+					{
+						iter->count++;
+						if(iter->numMinSignal > it->numSignal)
+						{
+							iter->numMinSignal = it->numSignal;
+							iter->humMinSignal = it->humSignal;
+						}
+						else if(iter->numMaxSignal < it->numSignal)
+						{
+							iter->numMaxSignal = it->numSignal;
+							iter->humMaxSignal = it->humSignal;
+						}
+
+						if(iter->numTs < it->numTs)
+						{
+							iter->lastSeen = it->humTs;
+						}
+						iter->humTs = it->humTs;
+						iter->numTs = it->numTs;
+						iter->numSignal = it->numSignal;
+						iter->humSignal = it->humSignal;
+						iter->humChannel = it->humChannel;
+						iter->numChannel = it->numChannel;
+						break;
+					}
+				}
+			}
+		}
+		//std::cout << "MW SEND" << std::endl;
+		lapsForCurses.sort([](GlobalObjects::LapDescriptor const  a, GlobalObjects::LapDescriptor const  b) {return (a.numSignal > b.numSignal);});
+		clear();
+		printw("LAP\t         Time\t        RSSI\tMin     Max     Channel  First Seen    Last Seen   Count\n");
+		for (it = lapsForCurses.begin(); it != lapsForCurses.end(); ++it)
+		{
+			std::string count = to_string(it->count);
+			printw("%s\t%s\t%s\t%s\t%s\t%s\t%s     %s    %s\n", it->humLap.data(),it->humTs.data(), it->humSignal.data(), it->humMinSignal.data(), it->humMaxSignal.data(), it->humChannel.data(), it->firstSeen.data(), it->lastSeen.data(), count.data());
+		}
+		refresh();
+		foundLaps.clear();
+	}
+}
