@@ -7,4 +7,4 @@ Eclipse
 Ubertooth installed and working on system<br />  root privliges<br />  sudo apt-get install libncurses5-dev libncursesw5-dev<br />  sudo apt install libboost-program-options-dev<br />
 
 ## Usage
-./LapManager --sort [rssi] [lap] [rxts] --purge [minutes]
+./LapManager --sort [rssi] [lap] [rxts] --purge [minutes]<br />e.g. ./LapManager --sort rssi --purge 30
