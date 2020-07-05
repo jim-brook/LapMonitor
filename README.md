@@ -4,10 +4,7 @@ This is a 'front end' for ubertooth-rx built using Eclipse. It provides an aggre
 
 ## Requirements
 Eclipse
-Ubertooth installed and working on system
-root privliges
-sudo apt-get install libncurses5-dev libncursesw5-dev 
-sudo apt install libboost-program-options-dev
+Ubertooth installed and working on system  root privliges  sudo apt-get install libncurses5-dev libncursesw5-dev  sudo apt install libboost-program-options-dev
 
 ## Usage
 ./LapManager --sort <rssi> <lap> <rxts> --purge <minutes>
