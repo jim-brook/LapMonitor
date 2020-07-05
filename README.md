@@ -7,4 +7,4 @@ Eclipse<br />Ubertooth installed and working on system<br />  sudo apt-get insta
 
 ## Usage
 mkfifo /tmp/ubt<br />ubertooth-rx > /tmp/ubt<br />
-./LapManager --sort [rssi] [lap] [rxts] --purge [minutes]<br />e.g. ./LapManager --sort rssi --purge 30
+./LapManager --sort [rssi] [lap] [rxts] --purge [minutes]<br />eg:  ./LapManager --sort rssi --purge 30
