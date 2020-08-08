@@ -30,6 +30,7 @@ void MonitorWindow::Start(void)
 	std::list<GlobalObjects::LapDescriptor> lapsForCurses;
 
 	initscr();
+	curs_set(0);
 	scrollok(stdscr,TRUE);
 
 	while(gObs->isClosing == false)
