@@ -37,7 +37,6 @@ void MonitorWindow::Start(void)
 	{
 		if(gObs->listToMonitorRdy == false)
 		{
-			//std::cout << "MW SLEEP" << std::endl;
 			gObs->ListToMonitorWaiter();
 		}
 		//std::cout << "MW AWAKE" << std::endl;
